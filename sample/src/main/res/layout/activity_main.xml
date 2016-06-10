@@ -68,19 +68,5 @@
 
         </RelativeLayout>
     </android.support.v7.widget.CardView>
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="New Text"
-        android:id="@+id/textView"
-        android:layout_gravity="center"
-        android:background="#000"
-        android:textSize="50sp"
-        android:textColor="#fff"
-        android:paddingLeft="20dp"
-        android:paddingRight="20dp"
-        android:paddingTop="5dp"
-        android:paddingBottom="5dp" />
 </FrameLayout>
 
