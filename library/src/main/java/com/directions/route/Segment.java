@@ -1,7 +1,8 @@
 package com.directions.route;
 //by Haseem Saheed
 
-import com.google.android.gms.maps.model.LatLng;
+
+import com.mapbox.mapboxsdk.geometry.LatLng;
 
 public class Segment {
     /**

@@ -2,7 +2,7 @@ package com.directions.route;
 
 import android.util.Log;
 
-import com.google.android.gms.maps.model.LatLng;
+import com.mapbox.mapboxsdk.geometry.LatLng;
 
 import org.json.JSONArray;
 import org.json.JSONException;

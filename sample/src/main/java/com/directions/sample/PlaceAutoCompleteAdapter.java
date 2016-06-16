@@ -34,7 +34,8 @@ import com.google.android.gms.location.places.AutocompleteFilter;
 import com.google.android.gms.location.places.AutocompletePrediction;
 import com.google.android.gms.location.places.AutocompletePredictionBuffer;
 import com.google.android.gms.location.places.Places;
-import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.LatLng;
+import com.mapbox.mapboxsdk.geometry.LatLngBounds;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -164,12 +165,17 @@ public class PlaceAutoCompleteAdapter
         if (mGoogleApiClient.isConnected()) {
             Log.i(TAG, "Starting autocomplete query for: " + constraint);
 
+            LatLng lat1 = new LatLng(mBounds.toLatLngs()[0].getLatitude(), mBounds.toLatLngs()[0].getLongitude());
+            LatLng lat2 = new LatLng(mBounds.toLatLngs()[1].getLatitude(), mBounds.toLatLngs()[1].getLongitude());
+            com.google.android.gms.maps.model.LatLngBounds gBound = com.google.android.gms.maps.model.LatLngBounds.builder()
+                    .include(lat1).include(lat2).build();
+
             // Submit the query to the autocomplete API and retrieve a PendingResult that will
             // contain the results when the query completes.
             PendingResult<AutocompletePredictionBuffer> results =
                     Places.GeoDataApi
                             .getAutocompletePredictions(mGoogleApiClient, constraint.toString(),
-                                    mBounds, mPlaceFilter);
+                                    gBound, mPlaceFilter);
 
             // This method should have been called off the main UI thread. Block and wait for at most 60s
             // for a result from the API.

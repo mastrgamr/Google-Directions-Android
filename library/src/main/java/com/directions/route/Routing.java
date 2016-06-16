@@ -1,6 +1,7 @@
 package com.directions.route;
 
-import com.google.android.gms.maps.model.LatLng;
+
+import com.mapbox.mapboxsdk.geometry.LatLng;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,16 +38,16 @@ public class Routing extends AbstractRouting {
         // origin
         final LatLng origin = waypoints.get(0);
         stringBuilder.append("origin=")
-                .append(origin.latitude)
+                .append(origin.getLatitude())
                 .append(',')
-                .append(origin.longitude);
+                .append(origin.getLongitude());
 
         // destination
         final LatLng destination = waypoints.get(waypoints.size() - 1);
         stringBuilder.append("&destination=")
-                .append(destination.latitude)
+                .append(destination.getLatitude())
                 .append(',')
-                .append(destination.longitude);
+                .append(destination.getLongitude());
 
         // travel
         stringBuilder.append("&mode=").append(travelMode.getValue());
@@ -59,9 +60,9 @@ public class Routing extends AbstractRouting {
             for (int i = 1; i < waypoints.size() - 1; i++) {
                 final LatLng p = waypoints.get(i);
                 stringBuilder.append("via:"); // we don't want to parse the resulting JSON for 'legs'.
-                stringBuilder.append(p.latitude);
+                stringBuilder.append(p.getLatitude());
                 stringBuilder.append(',');
-                stringBuilder.append(p.longitude);
+                stringBuilder.append(p.getLongitude());
                 stringBuilder.append('|');
             }
         }

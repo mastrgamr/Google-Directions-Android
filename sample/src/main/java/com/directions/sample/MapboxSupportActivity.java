@@ -1,10 +1,13 @@
 package com.directions.sample;
 
+import android.Manifest;
 import android.app.ProgressDialog;
+import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -27,18 +30,20 @@ import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.PlaceBuffer;
 import com.google.android.gms.location.places.Places;
-import com.google.android.gms.maps.CameraUpdate;
-import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapsInitializer;
-import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
-import com.google.android.gms.maps.model.CameraPosition;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.LatLngBounds;
-import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.maps.model.Polyline;
-import com.google.android.gms.maps.model.PolylineOptions;
+import com.mapbox.mapboxsdk.annotations.IconFactory;
+import com.mapbox.mapboxsdk.annotations.MarkerOptions;
+import com.mapbox.mapboxsdk.annotations.Polyline;
+import com.mapbox.mapboxsdk.annotations.PolylineOptions;
+import com.mapbox.mapboxsdk.camera.CameraPosition;
+import com.mapbox.mapboxsdk.camera.CameraUpdate;
+import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
+import com.mapbox.mapboxsdk.constants.Style;
+import com.mapbox.mapboxsdk.geometry.LatLng;
+import com.mapbox.mapboxsdk.geometry.LatLngBounds;
+import com.mapbox.mapboxsdk.maps.MapView;
+import com.mapbox.mapboxsdk.maps.MapboxMap;
+import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,8 +52,14 @@ import butterknife.ButterKnife;
 import butterknife.InjectView;
 import butterknife.OnClick;
 
-public class MainActivity extends AppCompatActivity implements RoutingListener, GoogleApiClient.OnConnectionFailedListener, GoogleApiClient.ConnectionCallbacks {
-    protected GoogleMap map;
+public class MapboxSupportActivity extends AppCompatActivity implements
+        RoutingListener,
+        GoogleApiClient.OnConnectionFailedListener,
+        GoogleApiClient.ConnectionCallbacks,
+        OnMapReadyCallback {
+
+    protected MapView mv;
+    protected MapboxMap map;
     protected LatLng start;
     protected LatLng end;
     @InjectView(R.id.start)
@@ -57,16 +68,18 @@ public class MainActivity extends AppCompatActivity implements RoutingListener, 
     AutoCompleteTextView destination;
     @InjectView(R.id.send)
     ImageView send;
+
     private static final String LOG_TAG = "MyActivity";
     protected GoogleApiClient mGoogleApiClient;
     private PlaceAutoCompleteAdapter mAdapter;
     private ProgressDialog progressDialog;
     private List<Polyline> polylines;
-    private static final int[] COLORS = new int[]{R.color.primary_dark,R.color.primary,R.color.primary_light,R.color.accent,R.color.primary_dark_material_light};
+    private static final int[] COLORS = new int[]{R.color.primary_dark, R.color.primary, R.color.primary_light, R.color.accent, R.color.primary_dark_material_light};
 
 
-    private static final LatLngBounds BOUNDS_JAMAICA= new LatLngBounds(new LatLng(-57.965341647205726, 144.9987719580531),
-            new LatLng(72.77492067739843, -9.998857788741589));
+    private static final LatLngBounds BOUNDS_JAMAICA = new LatLngBounds.Builder()
+            .include(new LatLng(-57.965341647205726, 144.9987719580531))
+            .include(new LatLng(72.77492067739843, -9.998857788741589)).build();
 
     /**
      * This activity loads a map and then displays the route and pushpins on it.
@@ -74,9 +87,9 @@ public class MainActivity extends AppCompatActivity implements RoutingListener, 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_mapbox_support);
         ButterKnife.inject(this);
-        getSupportActionBar().setDisplayShowHomeEnabled(true);
+        //getSupportActionBar().setDisplayShowHomeEnabled(true);
 
         polylines = new ArrayList<>();
         mGoogleApiClient = new GoogleApiClient.Builder(this)
@@ -87,47 +100,38 @@ public class MainActivity extends AppCompatActivity implements RoutingListener, 
         MapsInitializer.initialize(this);
         mGoogleApiClient.connect();
 
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
 
-        if (mapFragment == null) {
-            mapFragment = SupportMapFragment.newInstance();
-            getSupportFragmentManager().beginTransaction().replace(R.id.map, mapFragment).commit();
-        }
-        map = mapFragment.getMap();
+        mv = (MapView) findViewById(R.id.mapview);
+        //FYI this shit is deprecated
+        mv.setAccessToken(getResources().getString(R.string.mbmap_key)); //value not in this repo
+        mv.onCreate(savedInstanceState);
+        mv.getMapAsync(this);
+        mv.setStyle(Style.MAPBOX_STREETS);
 
         mAdapter = new PlaceAutoCompleteAdapter(this, android.R.layout.simple_list_item_1,
                 mGoogleApiClient, BOUNDS_JAMAICA, null);
 
 
-        /*
-        * Updates the bounds being used by the auto complete adapter based on the position of the
-        * map.
-        * */
-        map.setOnCameraChangeListener(new GoogleMap.OnCameraChangeListener() {
-            @Override
-            public void onCameraChange(CameraPosition position) {
-                LatLngBounds bounds = map.getProjection().getVisibleRegion().latLngBounds;
-                mAdapter.setBounds(bounds);
-            }
-        });
-
-
-        CameraUpdate center = CameraUpdateFactory.newLatLng(new LatLng(18.013610, -77.498803));
-        CameraUpdate zoom = CameraUpdateFactory.zoomTo(16);
-
-        map.moveCamera(center);
-        map.animateCamera(zoom);
-
         LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
 
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
         locationManager.requestLocationUpdates(
                 LocationManager.NETWORK_PROVIDER, 5000, 0,
                 new LocationListener() {
                     @Override
                     public void onLocationChanged(Location location) {
 
-                        CameraUpdate center = CameraUpdateFactory.newLatLng(new LatLng(location.getLatitude(),location.getLongitude()));
-                        CameraUpdate zoom = CameraUpdateFactory.zoomTo(16);
+                        CameraUpdate center = CameraUpdateFactory.newLatLng(new LatLng(location.getLatitude(), location.getLongitude()));
+                        CameraUpdate zoom = CameraUpdateFactory.zoomTo(10);
 
                         map.moveCamera(center);
                         map.animateCamera(zoom);
@@ -155,7 +159,7 @@ public class MainActivity extends AppCompatActivity implements RoutingListener, 
                     @Override
                     public void onLocationChanged(Location location) {
                         CameraUpdate center = CameraUpdateFactory.newLatLng(new LatLng(location.getLatitude(),location.getLongitude()));
-                        CameraUpdate zoom = CameraUpdateFactory.zoomTo(16);
+                        CameraUpdate zoom = CameraUpdateFactory.zoomTo(10);
 
                         map.moveCamera(center);
                         map.animateCamera(zoom);
@@ -219,7 +223,9 @@ public class MainActivity extends AppCompatActivity implements RoutingListener, 
                         // Get the Place object from the buffer.
                         final Place place = places.get(0);
 
-                        start=place.getLatLng();
+                        final LatLng mStart = new LatLng(place.getLatLng().latitude, place.getLatLng().longitude);
+
+                        start=mStart;
                     }
                 });
 
@@ -251,7 +257,9 @@ public class MainActivity extends AppCompatActivity implements RoutingListener, 
                         // Get the Place object from the buffer.
                         final Place place = places.get(0);
 
-                        end=place.getLatLng();
+                        final LatLng mEnd = new LatLng(place.getLatLng().latitude, place.getLatLng().longitude);
+
+                        end=mEnd;
                     }
                 });
 
@@ -383,7 +391,7 @@ public class MainActivity extends AppCompatActivity implements RoutingListener, 
     {
         progressDialog.dismiss();
         CameraUpdate center = CameraUpdateFactory.newLatLng(start);
-        CameraUpdate zoom = CameraUpdateFactory.zoomTo(16);
+        CameraUpdate zoom = CameraUpdateFactory.zoomTo(10);
 
         map.moveCamera(center);
 
@@ -414,13 +422,13 @@ public class MainActivity extends AppCompatActivity implements RoutingListener, 
         // Start marker
         MarkerOptions options = new MarkerOptions();
         options.position(start);
-        options.icon(BitmapDescriptorFactory.fromResource(R.drawable.start_blue));
+        options.icon(IconFactory.getInstance(this).fromResource(R.drawable.start_blue));
         map.addMarker(options);
 
         // End marker
         options = new MarkerOptions();
         options.position(end);
-        options.icon(BitmapDescriptorFactory.fromResource(R.drawable.end_green));
+        options.icon(IconFactory.getInstance(this).fromResource(R.drawable.end_green));
         map.addMarker(options);
 
     }
@@ -443,5 +451,29 @@ public class MainActivity extends AppCompatActivity implements RoutingListener, 
     @Override
     public void onConnectionSuspended(int i) {
 
+    }
+
+    @Override
+    public void onMapReady(MapboxMap mapboxMap) {
+        System.out.println("REEDY");
+        map = mapboxMap;
+
+        /*
+        * Updates the bounds being used by the auto complete adapter based on the position of the
+        * map.
+        * */
+        map.setOnCameraChangeListener(new MapboxMap.OnCameraChangeListener() {
+            @Override
+            public void onCameraChange(CameraPosition position) {
+                LatLngBounds bounds = map.getProjection().getVisibleRegion().latLngBounds;
+                mAdapter.setBounds(bounds);
+            }
+        });
+
+        CameraUpdate center = CameraUpdateFactory.newLatLng(new LatLng(18.013610, -77.498803));
+        CameraUpdate zoom = CameraUpdateFactory.zoomTo(10);
+
+        map.moveCamera(center);
+        map.animateCamera(zoom);
     }
 }
